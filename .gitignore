@@ -1,0 +1,19 @@
+# Node artifacts
+node_modules/
+dist/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# IDE files
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Backend build artifacts
+backend/target/
