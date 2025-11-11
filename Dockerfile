@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-alpine AS builder
-WORKDIR /app
+# Build the React frontend
+FROM node:20-alpine AS frontend-builder
+WORKDIR /app/frontend
 
 COPY package.json package-lock.json* ./
 RUN npm install --legacy-peer-deps
@@ -9,12 +10,24 @@ RUN npm install --legacy-peer-deps
 COPY . .
 RUN npm run build
 
-FROM nginx:1.25-alpine AS runner
+# Build the Spring Boot backend and bundle the frontend assets
+FROM maven:3.9.6-eclipse-temurin-17 AS backend-builder
+WORKDIR /workspace/backend
 
-# Copy the production build output to the nginx web root
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY backend/pom.xml ./
+RUN mvn dependency:go-offline
 
-EXPOSE 80
+COPY backend/src ./src
+COPY --from=frontend-builder /app/frontend/dist ./src/main/resources/static
 
-# Run nginx in the foreground
-CMD ["nginx", "-g", "daemon off;"]
+RUN mvn package -DskipTests
+
+# Runtime image serving the API and static frontend
+FROM eclipse-temurin:17-jre-alpine AS runner
+WORKDIR /app
+
+COPY --from=backend-builder /workspace/backend/target/chatwithtext-backend-0.0.1-SNAPSHOT.jar app.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
