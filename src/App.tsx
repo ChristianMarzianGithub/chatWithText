@@ -6,6 +6,8 @@ import HomePage from './pages/HomePage';
 import ImprintPage from './pages/ImprintPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import { DarkModeProvider } from './hooks/useDarkMode';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 
 const App = () => {
   return (
@@ -17,6 +19,8 @@ const App = () => {
           <Route path="faq" element={<FAQPage />} />
           <Route path="privacy" element={<PrivacyPolicyPage />} />
           <Route path="imprint" element={<ImprintPage />} />
+          <Route path="login" element={<LoginPage />} />
+          <Route path="register" element={<RegisterPage />} />
         </Route>
       </Routes>
     </DarkModeProvider>

@@ -13,6 +13,11 @@ const navigation = [
   { name: 'Imprint', to: '/imprint' }
 ];
 
+const authLinks = [
+  { name: 'Log in', to: '/login' },
+  { name: 'Register', to: '/register' }
+];
+
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -38,8 +43,27 @@ const Header = () => {
               {item.name}
             </NavLink>
           ))}
-          <DarkModeToggle />
         </nav>
+        <div className="hidden items-center gap-3 md:flex">
+          {authLinks.map((item) => (
+            <NavLink
+              key={item.name}
+              to={item.to}
+              className={({ isActive }) =>
+                `rounded-full px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
+                  item.name === 'Register'
+                    ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-500 dark:bg-blue-500 dark:hover:bg-blue-400'
+                    : isActive
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white'
+                }`
+              }
+            >
+              {item.name}
+            </NavLink>
+          ))}
+          <DarkModeToggle />
+        </div>
         <div className="flex items-center gap-3 md:hidden">
           <DarkModeToggle />
           <button
@@ -94,6 +118,26 @@ const Header = () => {
                           isActive
                             ? 'bg-blue-600 text-white dark:bg-blue-500'
                             : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white'
+                        }`
+                      }
+                    >
+                      {item.name}
+                    </NavLink>
+                  ))}
+                </div>
+                <div className="space-y-2 py-6">
+                  {authLinks.map((item) => (
+                    <NavLink
+                      key={item.name}
+                      to={item.to}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={({ isActive }) =>
+                        `block rounded-lg px-4 py-2 text-base font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
+                          item.name === 'Register'
+                            ? 'bg-blue-600 text-white shadow-sm hover:bg-blue-500 dark:bg-blue-500 dark:hover:bg-blue-400'
+                            : isActive
+                              ? 'text-blue-600 dark:text-blue-400'
+                              : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white'
                         }`
                       }
                     >
