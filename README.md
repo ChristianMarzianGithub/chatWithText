@@ -38,6 +38,8 @@ npm test
 
 The home page now supports uploading PDF or TXT documents from the right-hand panel. After a successful upload, the file picker disappears and is replaced with a scrollable preview of the extracted text. When a PDF contains multiple pages, pagination controls let you move between pages while keeping the text panel scrollable for long content. Unsupported file types are rejected with a clear validation message.
 
+When a PDF only contains images, the preview strips out the binary image data so the textarea remains text-only.
+
 Run backend tests with:
 
 ```bash

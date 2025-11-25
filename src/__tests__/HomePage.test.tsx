@@ -49,4 +49,19 @@ describe('HomePage upload area', () => {
     expect(await screen.findByText(/First page text/)).toBeInTheDocument();
     expect(screen.getByText(/Page 1 of 2/)).toBeInTheDocument();
   });
+
+  it('shows no binary content when a pdf only contains images', async () => {
+    render(<HomePage />);
+
+    const uploadInput = screen.getByLabelText(/upload a pdf or txt file/i);
+    const pdfWithImage = `%PDF-1.4\n1 0 obj\n<< /Type /Page >>\nstream\nq 100 0 0 100 0 0 cm /Im0 Do\nendstream\nendobj\n2 0 obj\n<< /Type /XObject /Subtype /Image /Width 100 /Height 100 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length 12 >>\nstream\nABC123\u0000\u0001\u0002\u0003\nendstream\nendobj\n`;
+    const file = new File([pdfWithImage], 'image-only.pdf', { type: 'application/pdf' });
+
+    await userEvent.upload(uploadInput, file);
+
+    const preview = await screen.findByTestId('uploaded-page-content');
+    expect(screen.getByText(/Page 1 of 1/)).toBeInTheDocument();
+    expect(preview.textContent).toBe('');
+    expect(screen.queryByText(/ABC123/)).not.toBeInTheDocument();
+  });
 });

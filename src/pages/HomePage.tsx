@@ -68,6 +68,9 @@ const HomePage = () => {
     return new Response(file).arrayBuffer();
   };
 
+  const sanitizePageText = (value: string) =>
+    value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, "").trim();
+
   const extractPdfPages = async (file: File) => {
     const arrayBuffer = await readFileArrayBuffer(file);
     const decodedPdf = new TextDecoder("latin1").decode(arrayBuffer);
@@ -76,12 +79,12 @@ const HomePage = () => {
     const parsedPages = rawPages
       .map((page) => {
         const textMatches = [...page.matchAll(/\(([^()]*(?:\\\(|\\\)[^()]*)*)\)/g)];
-        const pageText = textMatches.map((match) => decodePdfString(match[1])).join(" ").trim();
-        return pageText;
+        const pageText = textMatches.map((match) => decodePdfString(match[1])).join(" ");
+        return sanitizePageText(pageText);
       })
       .filter((pageText) => pageText.length > 0);
 
-    return parsedPages.length > 0 ? parsedPages : [decodedPdf];
+    return parsedPages.length > 0 ? parsedPages : [""];
   };
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -257,7 +260,10 @@ const HomePage = () => {
               </div>
               <div className="flex-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
                 <div className="h-full overflow-y-auto rounded-lg bg-white p-4 shadow-inner dark:bg-slate-900/60">
-                  <pre className="whitespace-pre-wrap break-words text-sm text-slate-800 dark:text-slate-100">
+                  <pre
+                    data-testid="uploaded-page-content"
+                    className="whitespace-pre-wrap break-words text-sm text-slate-800 dark:text-slate-100"
+                  >
                     {uploadedPages[currentPage] || ""}
                   </pre>
                 </div>
