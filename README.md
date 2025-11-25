@@ -34,6 +34,10 @@ Run frontend tests with:
 npm test
 ```
 
+### Document upload preview
+
+The home page now supports uploading PDF or TXT documents from the right-hand panel. After a successful upload, the file picker disappears and is replaced with a scrollable preview of the extracted text. The preview panel is height-limited so long documents stay within the layout and scroll vertically instead of expanding the card. When a PDF contains multiple pages, pagination controls let you move between pages while keeping the text panel scrollable for long content. Unsupported file types are rejected with a clear validation message.
+
 Run backend tests with:
 
 ```bash
