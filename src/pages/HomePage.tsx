@@ -1,8 +1,12 @@
-import { useState, FormEvent, KeyboardEvent, useRef, useEffect } from "react";
+import { useState, FormEvent, KeyboardEvent, useRef, useEffect, ChangeEvent } from "react";
 
 const HomePage = () => {
   const [text, setText] = useState("");
   const [submittedTexts, setSubmittedTexts] = useState<Array<{ text: string; timestamp: string }>>([]);
+  const [uploadedPages, setUploadedPages] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState("");
   const historyRef = useRef<HTMLDivElement | null>(null);
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -36,6 +40,103 @@ const HomePage = () => {
     e.preventDefault();
     submitText();
   };
+
+  const decodePdfString = (input: string) =>
+    input
+      .replace(/\\\(/g, "(")
+      .replace(/\\\)/g, ")")
+      .replace(/\\n/g, "\n")
+      .replace(/\\r/g, "\r")
+      .replace(/\\t/g, "\t")
+      .replace(/\\f/g, "\f")
+      .replace(/\\b/g, "\b")
+      .replace(/\\\\/g, "\\");
+
+  const readFileText = (file: File) => {
+    if (typeof file.text === "function") {
+      return file.text();
+    }
+
+    return new Response(file).text();
+  };
+
+  const readFileArrayBuffer = (file: File) => {
+    if (typeof file.arrayBuffer === "function") {
+      return file.arrayBuffer();
+    }
+
+    return new Response(file).arrayBuffer();
+  };
+
+  const extractPdfPages = async (file: File) => {
+    const arrayBuffer = await readFileArrayBuffer(file);
+    const decodedPdf = new TextDecoder("latin1").decode(arrayBuffer);
+    const rawPages = decodedPdf.split(/\/(?:Type)\s*\/Page[^s]/g).slice(1);
+
+    const parsedPages = rawPages
+      .map((page) => {
+        const textMatches = [...page.matchAll(/\(([^()]*(?:\\\(|\\\)[^()]*)*)\)/g)];
+        const pageText = textMatches.map((match) => decodePdfString(match[1])).join(" ").trim();
+        return pageText;
+      })
+      .filter((pageText) => pageText.length > 0);
+
+    return parsedPages.length > 0 ? parsedPages : [decodedPdf];
+  };
+
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const extension = file.name.toLowerCase();
+    const isPdf = file.type === "application/pdf" || extension.endsWith(".pdf");
+    const isText = file.type === "text/plain" || extension.endsWith(".txt");
+
+    if (!isPdf && !isText) {
+      setUploadError("Only PDF and TXT files are supported.");
+      setUploadedPages([]);
+      setUploadedFileName("");
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      setUploadError(null);
+      setUploadedFileName(file.name);
+
+      if (isPdf) {
+        const pages = await extractPdfPages(file);
+        setUploadedPages(pages);
+        setCurrentPage(0);
+      } else {
+        const fileText = await readFileText(file);
+        setUploadedPages([fileText]);
+        setCurrentPage(0);
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to read file", error);
+      setUploadError("Something went wrong while reading the file. Please try again.");
+    }
+  };
+
+  const goToPreviousPage = () => {
+    setCurrentPage((prev) => Math.max(prev - 1, 0));
+  };
+
+  const goToNextPage = () => {
+    setCurrentPage((prev) => Math.min(prev + 1, uploadedPages.length - 1));
+  };
+
+  const resetUpload = () => {
+    setUploadedPages([]);
+    setCurrentPage(0);
+    setUploadedFileName("");
+    setUploadError(null);
+  };
+
+  const hasUploadedFile = uploadedPages.length > 0;
+
   return (
     <section className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Welcome to MyApp</h1>
@@ -103,25 +204,92 @@ const HomePage = () => {
             </div>
           </form>
         </div>
-        <div className="flex min-h-[28rem] items-center justify-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-100/60 p-6 text-slate-500 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
-          <div className="flex flex-col items-center gap-3 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm dark:bg-slate-800">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                className="h-8 w-8"
-                aria-hidden="true"
-              >
-                <path d="M4 16.5V17a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-.5" />
-                <path d="m8 12 4-4 4 4" />
-                <path d="M12 16V8" />
-              </svg>
+        <div className="flex min-h-[28rem] flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:shadow-glow">
+          {!hasUploadedFile ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center text-slate-600 dark:text-slate-300">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 shadow-sm dark:bg-slate-800">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  className="h-8 w-8"
+                  aria-hidden="true"
+                >
+                  <path d="M4 16.5V17a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-.5" />
+                  <path d="m8 12 4-4 4 4" />
+                  <path d="M12 16V8" />
+                </svg>
+              </div>
+              <div className="space-y-2">
+                <p className="text-lg font-semibold text-slate-900 dark:text-white">Upload a document</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">PDF and TXT files are supported.</p>
+              </div>
+              <label className="inline-flex cursor-pointer items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+                Upload file
+                <input
+                  aria-label="Upload a PDF or TXT file"
+                  className="sr-only"
+                  type="file"
+                  accept=".pdf,.txt,application/pdf,text/plain"
+                  onChange={handleFileChange}
+                />
+              </label>
+              {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
             </div>
-            <p className="text-sm">File upload coming soon.</p>
-          </div>
+          ) : (
+            <div className="flex h-full flex-col gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{uploadedFileName}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Page {currentPage + 1} of {uploadedPages.length}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={resetUpload}
+                  className="rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  Upload another file
+                </button>
+              </div>
+              <div className="flex-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+                <div className="h-full overflow-y-auto rounded-lg bg-white p-4 shadow-inner dark:bg-slate-900/60">
+                  <pre className="whitespace-pre-wrap break-words text-sm text-slate-800 dark:text-slate-100">
+                    {uploadedPages[currentPage] || ""}
+                  </pre>
+                </div>
+              </div>
+              {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
+              {uploadedPages.length > 1 && (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                    Navigate pages
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={goToPreviousPage}
+                      disabled={currentPage === 0}
+                      className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      Previous page
+                    </button>
+                    <button
+                      type="button"
+                      onClick={goToNextPage}
+                      disabled={currentPage === uploadedPages.length - 1}
+                      className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      Next page
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </section>
