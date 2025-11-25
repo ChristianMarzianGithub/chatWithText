@@ -36,7 +36,7 @@ npm test
 
 ### Document upload preview
 
-The home page now supports uploading PDF or TXT documents from the right-hand panel. After a successful upload, the file picker disappears and is replaced with a scrollable preview of the extracted text. When a PDF contains multiple pages, pagination controls let you move between pages while keeping the text panel scrollable for long content. Unsupported file types are rejected with a clear validation message.
+The home page upload area only accepts plain text files (`.txt`). After a successful upload, the file picker disappears and is replaced with a scrollable preview of the text content. Unsupported file types (including PDFs or images) are rejected with a clear validation message explaining the `.txt`-only limitation.
 
 Run backend tests with:
 

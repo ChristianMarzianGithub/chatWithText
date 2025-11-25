@@ -7,46 +7,33 @@ describe('HomePage upload area', () => {
   it('uploads a txt file and shows its content', async () => {
     render(<HomePage />);
 
-    const uploadInput = screen.getByLabelText(/upload a pdf or txt file/i);
+    const uploadInput = screen.getByLabelText(/upload \.txt file/i);
     const file = new File(['Hello from the test file'], 'example.txt', { type: 'text/plain' });
 
     await userEvent.upload(uploadInput, file);
 
     expect(await screen.findByText(/Hello from the test file/i)).toBeInTheDocument();
-    expect(screen.queryByText(/upload a document/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/Page 1 of 1/i)).toBeInTheDocument();
+    expect(screen.queryByText(/upload a text document/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Plain text preview/i)).toBeInTheDocument();
   });
 
   it('prevents unsupported file types', async () => {
     render(<HomePage />);
 
-    const uploadInput = screen.getByLabelText(/upload a pdf or txt file/i);
-    const file = new File(['binary'], 'image.png', { type: 'image/png' });
+    const uploadInput = screen.getByLabelText(/upload \.txt file/i);
+    const file = new File(['binary'], 'document.pdf', { type: 'application/pdf' });
 
     await userEvent.upload(uploadInput, file);
 
-    expect(await screen.findByText(/only pdf and txt files are supported/i)).toBeInTheDocument();
-    expect(screen.getByText(/upload a document/i)).toBeInTheDocument();
+    expect(await screen.findByText(/only txt files are supported/i)).toBeInTheDocument();
+    expect(screen.getByText(/upload a text document/i)).toBeInTheDocument();
   });
 
-  it('navigates between pdf pages when multiple pages exist', async () => {
+  it('displays the txt-only guidance', () => {
     render(<HomePage />);
 
-    const uploadInput = screen.getByLabelText(/upload a pdf or txt file/i);
-    const pdfContent = `%PDF-1.4\n1 0 obj\n<< /Type /Page >>\nstream\nBT (First page text) ET\nendstream\nendobj\n2 0 obj\n<< /Type /Page >>\nstream\nBT (Second page text) ET\nendstream\nendobj\n`;
-    const file = new File([pdfContent], 'document.pdf', { type: 'application/pdf' });
-
-    await userEvent.upload(uploadInput, file);
-
-    expect(await screen.findByText(/First page text/)).toBeInTheDocument();
-    expect(screen.getByText(/Page 1 of 2/)).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('button', { name: /next page/i }));
-    expect(await screen.findByText(/Second page text/)).toBeInTheDocument();
-    expect(screen.getByText(/Page 2 of 2/)).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('button', { name: /previous page/i }));
-    expect(await screen.findByText(/First page text/)).toBeInTheDocument();
-    expect(screen.getByText(/Page 1 of 2/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/only plain text files \(\.txt\) are supported for upload and preview/i),
+    ).toBeInTheDocument();
   });
 });

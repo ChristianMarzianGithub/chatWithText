@@ -3,8 +3,7 @@ import { useState, FormEvent, KeyboardEvent, useRef, useEffect, ChangeEvent } fr
 const HomePage = () => {
   const [text, setText] = useState("");
   const [submittedTexts, setSubmittedTexts] = useState<Array<{ text: string; timestamp: string }>>([]);
-  const [uploadedPages, setUploadedPages] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(0);
+  const [uploadedText, setUploadedText] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState("");
   const historyRef = useRef<HTMLDivElement | null>(null);
@@ -41,17 +40,6 @@ const HomePage = () => {
     submitText();
   };
 
-  const decodePdfString = (input: string) =>
-    input
-      .replace(/\\\(/g, "(")
-      .replace(/\\\)/g, ")")
-      .replace(/\\n/g, "\n")
-      .replace(/\\r/g, "\r")
-      .replace(/\\t/g, "\t")
-      .replace(/\\f/g, "\f")
-      .replace(/\\b/g, "\b")
-      .replace(/\\\\/g, "\\");
-
   const readFileText = (file: File) => {
     if (typeof file.text === "function") {
       return file.text();
@@ -60,41 +48,16 @@ const HomePage = () => {
     return new Response(file).text();
   };
 
-  const readFileArrayBuffer = (file: File) => {
-    if (typeof file.arrayBuffer === "function") {
-      return file.arrayBuffer();
-    }
-
-    return new Response(file).arrayBuffer();
-  };
-
-  const extractPdfPages = async (file: File) => {
-    const arrayBuffer = await readFileArrayBuffer(file);
-    const decodedPdf = new TextDecoder("latin1").decode(arrayBuffer);
-    const rawPages = decodedPdf.split(/\/(?:Type)\s*\/Page[^s]/g).slice(1);
-
-    const parsedPages = rawPages
-      .map((page) => {
-        const textMatches = [...page.matchAll(/\(([^()]*(?:\\\(|\\\)[^()]*)*)\)/g)];
-        const pageText = textMatches.map((match) => decodePdfString(match[1])).join(" ").trim();
-        return pageText;
-      })
-      .filter((pageText) => pageText.length > 0);
-
-    return parsedPages.length > 0 ? parsedPages : [decodedPdf];
-  };
-
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const extension = file.name.toLowerCase();
-    const isPdf = file.type === "application/pdf" || extension.endsWith(".pdf");
     const isText = file.type === "text/plain" || extension.endsWith(".txt");
 
-    if (!isPdf && !isText) {
-      setUploadError("Only PDF and TXT files are supported.");
-      setUploadedPages([]);
+    if (!isText) {
+      setUploadError("Only TXT files are supported.");
+      setUploadedText("");
       setUploadedFileName("");
       event.target.value = "";
       return;
@@ -103,16 +66,8 @@ const HomePage = () => {
     try {
       setUploadError(null);
       setUploadedFileName(file.name);
-
-      if (isPdf) {
-        const pages = await extractPdfPages(file);
-        setUploadedPages(pages);
-        setCurrentPage(0);
-      } else {
-        const fileText = await readFileText(file);
-        setUploadedPages([fileText]);
-        setCurrentPage(0);
-      }
+      const fileText = await readFileText(file);
+      setUploadedText(fileText);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error("Failed to read file", error);
@@ -120,28 +75,19 @@ const HomePage = () => {
     }
   };
 
-  const goToPreviousPage = () => {
-    setCurrentPage((prev) => Math.max(prev - 1, 0));
-  };
-
-  const goToNextPage = () => {
-    setCurrentPage((prev) => Math.min(prev + 1, uploadedPages.length - 1));
-  };
-
   const resetUpload = () => {
-    setUploadedPages([]);
-    setCurrentPage(0);
+    setUploadedText("");
     setUploadedFileName("");
     setUploadError(null);
   };
 
-  const hasUploadedFile = uploadedPages.length > 0;
+  const hasUploadedFile = uploadedText.length > 0;
 
   return (
     <section className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Welcome to MyApp</h1>
       <p className="max-w-2xl text-lg text-slate-600 dark:text-slate-300">
-        Upload a pdf file and let the ai answer question about its content.
+        Upload a plain text file (.txt) and let the AI answer questions about its content.
       </p>
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:shadow-glow min-h-[28rem]">
@@ -223,16 +169,18 @@ const HomePage = () => {
                 </svg>
               </div>
               <div className="space-y-2">
-                <p className="text-lg font-semibold text-slate-900 dark:text-white">Upload a document</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">PDF and TXT files are supported.</p>
+                <p className="text-lg font-semibold text-slate-900 dark:text-white">Upload a text document</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Only plain text files (.txt) are supported for upload and preview.
+                </p>
               </div>
               <label className="inline-flex cursor-pointer items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
-                Upload file
+                Upload .txt file
                 <input
-                  aria-label="Upload a PDF or TXT file"
+                  aria-label="Upload .txt file"
                   className="sr-only"
                   type="file"
-                  accept=".pdf,.txt,application/pdf,text/plain"
+                  accept=".txt,text/plain"
                   onChange={handleFileChange}
                 />
               </label>
@@ -243,9 +191,7 @@ const HomePage = () => {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-slate-900 dark:text-white">{uploadedFileName}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Page {currentPage + 1} of {uploadedPages.length}
-                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Plain text preview</p>
                 </div>
                 <button
                   type="button"
@@ -257,37 +203,15 @@ const HomePage = () => {
               </div>
               <div className="flex-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
                 <div className="h-full overflow-y-auto rounded-lg bg-white p-4 shadow-inner dark:bg-slate-900/60">
-                  <pre className="whitespace-pre-wrap break-words text-sm text-slate-800 dark:text-slate-100">
-                    {uploadedPages[currentPage] || ""}
+                  <pre
+                    data-testid="uploaded-file-content"
+                    className="whitespace-pre-wrap break-words text-sm text-slate-800 dark:text-slate-100"
+                  >
+                    {uploadedText}
                   </pre>
                 </div>
               </div>
               {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
-              {uploadedPages.length > 1 && (
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                    Navigate pages
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={goToPreviousPage}
-                      disabled={currentPage === 0}
-                      className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-                    >
-                      Previous page
-                    </button>
-                    <button
-                      type="button"
-                      onClick={goToNextPage}
-                      disabled={currentPage === uploadedPages.length - 1}
-                      className="rounded-full border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-                    >
-                      Next page
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
